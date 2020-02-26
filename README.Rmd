@@ -1,0 +1,201 @@
+---
+title: "README"
+author: "Amanda Elert"
+date: "2/26/2020"
+output: md_document
+---
+# Homework 2: Unemployment Prediction
+Install necessary packages.
+```{r}
+#install.packages("blscrapeR")
+library(blscrapeR)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+First, I gather bridge data for 12 states through 2012-2018 in 12*7 separate files, and then I combine the files into one master file.
+```{r}
+for(statee in c("ID", "IL", "IN", "IA", "KS",
+                "KY", "LA", "ME", "MD", "MA",
+                "MI", "MN")){
+  for(yearr in 2012:2018){
+    URL <- paste0("https://www.fhwa.dot.gov/bridge/nbi/",
+                 yearr,
+                 "/delimited/",
+                 statee,
+                 substr(yearr, 3,4),
+                 ".txt"
+                 )
+    tib_name <- paste0(statee,yearr) # assigning a specific name (STATE.ABBYEAR) to each file
+    
+    assign(tib_name, fread(URL) %>% 
+             as_tibble() %>% 
+             # Explains each var in detail: https://www.fhwa.dot.gov/bridge/mtguide.pdf
+             select(STATE_CODE_001,
+                    COUNTY_CODE_003,
+                    ADT_029,
+                    TOTAL_IMP_COST_096, #  all costs  associated with the proposed bridge improvement project
+                    contains("COND")) %>% 
+             # Can only use states with a state fips code of 2 digits to use this code
+             mutate(fips = STATE_CODE_001*1000 + COUNTY_CODE_003,
+                    year_of_data = yearr,
+                    improve_cost = TOTAL_IMP_COST_096*1000) # Cost was in thousands of dollars originally
+           )
+    }
+  }
+
+
+
+# Joining all bridges files into one main file
+br <- rbind(ID2012, ID2013, ID2014, ID2015, ID2016, ID2017, ID2018,
+            IL2012, IL2013, IL2014, IL2015, IL2016, IL2017, IL2018,
+            IN2012, IN2013, IN2014, IN2015, IN2016, IN2017, IN2018,
+            IA2012, IA2013, IA2014, IA2015, IA2016, IA2017, IA2018,
+            KS2012, KS2013, KS2014, KS2015, KS2016, KS2017, KS2018,
+            KY2012, KY2013, KY2014, KY2015, KY2016, KY2017, KY2018,
+            LA2012, LA2013, LA2014, LA2015, LA2016, LA2017, LA2018,
+            ME2012, ME2013, ME2014, ME2015, ME2016, ME2017, ME2018,
+            MD2012, MD2013, MD2014, MD2015, MD2016, MD2017, MD2018,
+            MA2012, MA2013, MA2014, MA2015, MA2016, MA2017, MA2018,
+            MI2012, MI2013, MI2014, MI2015, MI2016, MI2017, MI2018,
+            MN2012, MN2013, MN2014, MN2015, MN2016, MN2017, MN2018
+            )
+
+
+# Changing column types so I can join on those cols later
+br$fips <- as.character(as.integer(br$fips))
+br$STATE_CODE_001 <- as.character(br$STATE_CODE_001)
+```
+
+### Part 1: Making facets over states with x-axis as time and y-axis as average daily traffic
+```{r}
+br %>% 
+  select(STATE_CODE_001, year_of_data, DECK_COND_058, SUPERSTRUCTURE_COND_059, 
+         SUBSTRUCTURE_COND_060, CHANNEL_COND_061, CULVERT_COND_062, ADT_029, TOTAL_IMP_COST_096) %>% 
+  group_by(STATE_CODE_001, year_of_data) %>% 
+  # Need to remove "N" (means "Not Applicable") from the condition columns
+  mutate(DECK_COND_058 = na_if(DECK_COND_058, "N"),
+         SUPERSTRUCTURE_COND_059 = na_if(SUPERSTRUCTURE_COND_059, "N"),
+         SUBSTRUCTURE_COND_060 = na_if(SUBSTRUCTURE_COND_060, "N"),
+         CHANNEL_COND_061 = na_if(CHANNEL_COND_061, "N"),
+         CULVERT_COND_062 = na_if(CULVERT_COND_062, "N")) %>% 
+  rename(st = STATE_CODE_001) %>% 
+  summarize(count = n(), 
+            deck = mean(as.numeric(DECK_COND_058), na.rm = T),
+            super = mean(as.numeric(SUPERSTRUCTURE_COND_059), na.rm=T),
+            sub = mean(as.numeric(SUBSTRUCTURE_COND_060), na.rm=T),
+            channel = mean(as.numeric(CHANNEL_COND_061), na.rm=T),   
+            culvert = mean(as.numeric(CULVERT_COND_062), na.rm=T),
+            avg_daily_traff = mean(ADT_029, na.rm = T),
+            avg_imp_cost = mean(TOTAL_IMP_COST_096, na.rm = T)) %>% 
+  ggplot() +
+  geom_line(aes(x = year_of_data,
+                y = avg_daily_traff)) +
+  labs(x = "Year of Bridge Data Collection", 
+       y = "Average Daily Traffic",
+       title = "Year versus Average Daily Traffic Per State",
+       caption = "Source: U.S. Dept. of Transportation") +
+  scale_x_continuous(breaks  = c(2012:2018)) +
+  facet_wrap(~ st)
+```
+
+### Part 2: Now joining the average of the bridge data over the years to BLS data
+```{r}
+bls <- get_bls_county("December 2018")
+
+br_bls <- br %>% 
+  group_by(fips) %>% 
+  # Need to remove "N" (means "Not Applicable") from the condition columns
+  mutate(DECK_COND_058 = na_if(DECK_COND_058, "N"),
+         SUPERSTRUCTURE_COND_059 = na_if(SUPERSTRUCTURE_COND_059, "N"),
+         SUBSTRUCTURE_COND_060 = na_if(SUBSTRUCTURE_COND_060, "N"),
+         CHANNEL_COND_061 = na_if(CHANNEL_COND_061, "N"),
+         CULVERT_COND_062 = na_if(CULVERT_COND_062, "N")) %>% 
+  summarize(count = n(), 
+            deck = mean(as.numeric(DECK_COND_058), na.rm = T),
+            super = mean(as.numeric(SUPERSTRUCTURE_COND_059), na.rm=T),
+            sub = mean(as.numeric(SUBSTRUCTURE_COND_060), na.rm=T),
+            channel = mean(as.numeric(CHANNEL_COND_061), na.rm=T),   
+            culvert = mean(as.numeric(CULVERT_COND_062), na.rm=T),
+            avg_daily_traff = mean(ADT_029, na.rm = T),
+            avg_imp_cost = mean(TOTAL_IMP_COST_096, na.rm = T)) %>% 
+  left_join(bls)
+
+
+# Checking the joined tables do not have duplicate zipcodes
+# the br_bls table should be summaries of the bridge and BLS data for each zipcode
+br_bls %>% 
+  group_by(fips) %>% 
+  summarise(n = n()) %>% 
+  filter(n > 1)
+# Empty tibble means it passes the duplication check
+```
+
+### Part 3: Using the bridges data to find features that are predictive of unemployment 
+**Fit a linear model to predict the number of unemployed.**
+```{r}
+mod1 <- lm(unemployed ~ count + super + sub + channel + culvert + avg_daily_traff + avg_imp_cost, data = br_bls)
+summary(mod1)
+```
+
+**Fit another model to predict the unemployment rate.**
+```{r}
+mod2 <- lm(unemployed_rate ~ count + super + sub + channel + culvert + avg_daily_traff + avg_imp_cost, data = br_bls)
+summary(mod2)
+```
+
+**Then, use the unemployed number and rate from the previous month as additional predictors.**
+The bridges data changes by year, and the BLS data changes by month. </br>
+To make the data match as the bridges data for that year fit with the BLS data of the month, I will make a model that takes the bridges data and unemployment number/rate from 2018 as features in a model to predict the unemployment rate of December 2019 (the most recent bridges data is from 2018).
+```{r}
+br_2018 <- rbind(ID2018, IL2018, IN2018, IA2018, KS2018, KY2018, 
+                 LA2018, ME2018, MD2018, MA2018, MI2018, MN2018)
+br_2018$fips <- as.character(as.integer(br_2018$fips))
+br_2018$STATE_CODE_001 <- as.character(br_2018$STATE_CODE_001)
+
+bls_2018_2019 <- get_bls_county(c("December 2018", "December 2019"))
+
+
+br_bls_2018_2019 <- br_2018 %>% 
+  drop_na(fips) %>% 
+  group_by(fips) %>% 
+  # Need to remove "N" (means "Not Applicable") from the condition columns
+  mutate(DECK_COND_058 = na_if(DECK_COND_058, "N"),
+         SUPERSTRUCTURE_COND_059 = na_if(SUPERSTRUCTURE_COND_059, "N"),
+         SUBSTRUCTURE_COND_060 = na_if(SUBSTRUCTURE_COND_060, "N"),
+         CHANNEL_COND_061 = na_if(CHANNEL_COND_061, "N"),
+         CULVERT_COND_062 = na_if(CULVERT_COND_062, "N")) %>% 
+  summarize(count = n(), 
+            deck = mean(as.numeric(DECK_COND_058), na.rm = T),
+            super = mean(as.numeric(SUPERSTRUCTURE_COND_059), na.rm=T),
+            sub = mean(as.numeric(SUBSTRUCTURE_COND_060), na.rm=T),
+            channel = mean(as.numeric(CHANNEL_COND_061), na.rm=T),   
+            culvert = mean(as.numeric(CULVERT_COND_062), na.rm=T),
+            avg_daily_traff = mean(ADT_029, na.rm = T),
+            avg_imp_cost = mean(TOTAL_IMP_COST_096, na.rm = T)) %>% 
+  left_join(bls_2018_2019)
+
+# Checking that each fips code is repeated twice, once for Dec 2018 and once for Dec 2019
+br_bls_2018_2019 %>% 
+  group_by(fips) %>% 
+  summarise(n = n()) %>% 
+  filter(n != 2)
+
+# Creating the model using the unemployed number and rate from the previous month as additional predictors
+mod3 <- lm(br_bls_2018_2019$unemployed_rate[which(br_bls_2018_2019$period == '2019-12-01')] ~ 
+                 br_bls_2018_2019$super[which(br_bls_2018_2019$period == '2018-12-01')] + 
+                 br_bls_2018_2019$sub[which(br_bls_2018_2019$period == '2018-12-01')] + 
+                 br_bls_2018_2019$channel[which(br_bls_2018_2019$period == '2018-12-01')] + 
+                 br_bls_2018_2019$culvert[which(br_bls_2018_2019$period == '2018-12-01')] + 
+                 br_bls_2018_2019$avg_daily_traff[which(br_bls_2018_2019$period == '2018-12-01')] +
+                 br_bls_2018_2019$avg_imp_cost[which(br_bls_2018_2019$period == '2018-12-01')] +
+                 br_bls_2018_2019$unemployed[which(br_bls_2018_2019$period == '2018-12-01')] + 
+                 br_bls_2018_2019$unemployed_rate[which(br_bls_2018_2019$period == '2018-12-01')], data = br_bls_2018_2019)
+summary(mod3)
+```
+
+
+
+
