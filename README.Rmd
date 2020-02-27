@@ -98,7 +98,8 @@ br %>%
        title = "Year versus Average Daily Traffic Per State",
        caption = "Source: U.S. Dept. of Transportation") +
   scale_x_continuous(breaks  = c(2012, 2015, 2018)) +
-  facet_wrap(~ st)
+  facet_wrap(~ st) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ### Part 2: Now joining the average of the bridge data over the years to BLS data
@@ -209,6 +210,7 @@ Then, I created two models using the bridges data to predict the unemployment co
 </br>
 For the third model where we needed to predict the unemployment rate using the previous month's rate as a predictor, I ran into the same problem I had earlier (the bridges data changes by year, but the BLS data changes by month). It doesn't make sense to use the bridges data from 2012-2012 and the unemployment rate from December 2018 to predict the unemployment rate for December 2019. 
 </br>
-To make address this problem, I made a model that took the bridges data from 2018 and unemployment number/rate from December 2018 as features in a model to predict the unemployment rate of December 2019. 
+</br>
+To make address this problem, I made a model that took the bridges data from 2018 and unemployment number/rate from December 2018 as features in a model to predict the unemployment rate of December 2019. This model explains 84.9% of the variation in the unemployment rate of December 2019 around its mean. The following features are significant at the alpha = 0.0 level -- the intercept (when all the features in the model are zero), superstructure condition, substructure condition, average improvement cost, and the unemployment rate of December 2018.
 
 

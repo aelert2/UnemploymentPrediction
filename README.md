@@ -26,13 +26,13 @@ Install necessary packages.
     library(ggplot2)
     library(tidyverse)
 
-    ## ── Attaching packages ─────────── tidyverse 1.3.0 ──
+    ## ── Attaching packages ───────────────────── tidyverse 1.3.0 ──
 
     ## ✔ tibble  2.1.3     ✔ purrr   0.3.3
     ## ✔ tidyr   1.0.0     ✔ stringr 1.4.0
     ## ✔ readr   1.3.1     ✔ forcats 0.4.0
 
-    ## ── Conflicts ────────────── tidyverse_conflicts() ──
+    ## ── Conflicts ──────────────────────── tidyverse_conflicts() ──
     ## ✖ dplyr::between()   masks data.table::between()
     ## ✖ dplyr::filter()    masks stats::filter()
     ## ✖ dplyr::first()     masks data.table::first()
@@ -123,7 +123,8 @@ separate files, and then I combine the files into one master file.
            title = "Year versus Average Daily Traffic Per State",
            caption = "Source: U.S. Dept. of Transportation") +
       scale_x_continuous(breaks  = c(2012, 2015, 2018)) +
-      facet_wrap(~ st)
+      facet_wrap(~ st) + 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ![](README_files/figure-markdown_strict/unnamed-chunk-3-1.png)
 
@@ -389,7 +390,12 @@ previous month’s rate as a predictor, I ran into the same problem I had
 earlier (the bridges data changes by year, but the BLS data changes by
 month). It doesn’t make sense to use the bridges data from 2012-2012 and
 the unemployment rate from December 2018 to predict the unemployment
-rate for December 2019. </br> To make address this problem, I made a
-model that took the bridges data from 2018 and unemployment number/rate
-from December 2018 as features in a model to predict the unemployment
-rate of December 2019.
+rate for December 2019. </br> </br> To make address this problem, I made
+a model that took the bridges data from 2018 and unemployment
+number/rate from December 2018 as features in a model to predict the
+unemployment rate of December 2019. This model explains 84.9% of the
+variation in the unemployment rate of December 2019 around its mean. The
+following features are significant at the alpha = 0.0 level – the
+intercept (when all the features in the model are zero), superstructure
+condition, substructure condition, average improvement cost, and the
+unemployment rate of December 2018.
