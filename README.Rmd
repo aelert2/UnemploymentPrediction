@@ -97,7 +97,7 @@ br %>%
        y = "Average Daily Traffic",
        title = "Year versus Average Daily Traffic Per State",
        caption = "Source: U.S. Dept. of Transportation") +
-  scale_x_continuous(breaks  = c(2012:2018)) +
+  scale_x_continuous(breaks  = c(2012, 2015, 2018)) +
   facet_wrap(~ st)
 ```
 
@@ -146,7 +146,7 @@ mod2 <- lm(unemployed_rate ~ count + super + sub + channel + culvert + avg_daily
 summary(mod2)
 ```
 
-**Then, use the unemployed number and rate from the previous month as additional predictors.**
+**Then, use the unemployed number and rate from the previous month as additional predictors.** </br>
 The bridges data changes by year, and the BLS data changes by month. </br>
 To make the data match as the bridges data for that year fit with the BLS data of the month, I will make a model that takes the bridges data and unemployment number/rate from 2018 as features in a model to predict the unemployment rate of December 2019 (the most recent bridges data is from 2018).
 ```{r}
@@ -196,6 +196,19 @@ mod3 <- lm(br_bls_2018_2019$unemployed_rate[which(br_bls_2018_2019$period == '20
 summary(mod3)
 ```
 
-
+## Summary of Findings and Methodology
+</br>
+After reading in the bridges data for 12 states over 7 years and combining those files into one large tibble, I got to work on creating facets per state with the x-axis as time and the y-axis as average daily traffic. I was initially confused by having time on the x-axis because the bridges data does not contain many (if any) useful time type variables, but then I decided to use the year that the data wsa collected on the x-axis. Using this time variable made the most sense to track how the average daily traffic changes year-to-year.
+</br>
+</br>
+Next, I needed to join the bridges data to the BLS unemployment data. This presented another challenge when dealing with time. The bridges data is collected per year whereas the unemployment data is collected by month (and only the last 12 months of data was available). To address this discrepancy, I summarized the bridges data from 2012-2018 and joined that with the unemployment data from December 2018. The tables were joined by their fips code to create a final tibble (br_bls) with a summary of the bridges and unemployment data for each fips code.
+</br>
+</br>
+Then, I created two models using the bridges data to predict the unemployment count and the unemployment rate. 
+</br>
+</br>
+For the third model where we needed to predict the unemployment rate using the previous month's rate as a predictor, I ran into the same problem I had earlier (the bridges data changes by year, but the BLS data changes by month). It doesn't make sense to use the bridges data from 2012-2012 and the unemployment rate from December 2018 to predict the unemployment rate for December 2019. 
+</br>
+To make address this problem, I made a model that took the bridges data from 2018 and unemployment number/rate from December 2018 as features in a model to predict the unemployment rate of December 2019. 
 
 

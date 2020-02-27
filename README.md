@@ -26,13 +26,13 @@ Install necessary packages.
     library(ggplot2)
     library(tidyverse)
 
-    ## ── Attaching packages ─────────
+    ## ── Attaching packages ─────────── tidyverse 1.3.0 ──
 
     ## ✔ tibble  2.1.3     ✔ purrr   0.3.3
     ## ✔ tidyr   1.0.0     ✔ stringr 1.4.0
     ## ✔ readr   1.3.1     ✔ forcats 0.4.0
 
-    ## ── Conflicts ──────────────────
+    ## ── Conflicts ────────────── tidyverse_conflicts() ──
     ## ✖ dplyr::between()   masks data.table::between()
     ## ✖ dplyr::filter()    masks stats::filter()
     ## ✖ dplyr::first()     masks data.table::first()
@@ -122,7 +122,7 @@ separate files, and then I combine the files into one master file.
            y = "Average Daily Traffic",
            title = "Year versus Average Daily Traffic Per State",
            caption = "Source: U.S. Dept. of Transportation") +
-      scale_x_continuous(breaks  = c(2012:2018)) +
+      scale_x_continuous(breaks  = c(2012, 2015, 2018)) +
       facet_wrap(~ st)
 
 ![](README_files/figure-markdown_strict/unnamed-chunk-3-1.png)
@@ -230,11 +230,11 @@ separate files, and then I combine the files into one master file.
     ## F-statistic: 6.416 on 7 and 763 DF,  p-value: 2.353e-07
 
 **Then, use the unemployed number and rate from the previous month as
-additional predictors.** The bridges data changes by year, and the BLS
-data changes by month. </br> To make the data match as the bridges data
-for that year fit with the BLS data of the month, I will make a model
-that takes the bridges data and unemployment number/rate from 2018 as
-features in a model to predict the unemployment rate of December 2019
+additional predictors.** </br> The bridges data changes by year, and the
+BLS data changes by month. </br> To make the data match as the bridges
+data for that year fit with the BLS data of the month, I will make a
+model that takes the bridges data and unemployment number/rate from 2018
+as features in a model to predict the unemployment rate of December 2019
 (the most recent bridges data is from 2018).
 
     br_2018 <- rbind(ID2018, IL2018, IN2018, IA2018, KS2018, KY2018, 
@@ -362,3 +362,34 @@ features in a model to predict the unemployment rate of December 2019
     ##   (96 observations deleted due to missingness)
     ## Multiple R-squared:  0.849,  Adjusted R-squared:  0.8474 
     ## F-statistic: 523.7 on 8 and 745 DF,  p-value: < 2.2e-16
+
+Summary of Findings and Methodology
+-----------------------------------
+
+</br> After reading in the bridges data for 12 states over 7 years and
+combining those files into one large tibble, I got to work on creating
+facets per state with the x-axis as time and the y-axis as average daily
+traffic. I was initially confused by having time on the x-axis because
+the bridges data does not contain many (if any) useful time type
+variables, but then I decided to use the year that the data wsa
+collected on the x-axis. Using this time variable made the most sense to
+track how the average daily traffic changes year-to-year. </br> </br>
+Next, I needed to join the bridges data to the BLS unemployment data.
+This presented another challenge when dealing with time. The bridges
+data is collected per year whereas the unemployment data is collected by
+month (and only the last 12 months of data was available). To address
+this discrepancy, I summarized the bridges data from 2012-2018 and
+joined that with the unemployment data from December 2018. The tables
+were joined by their fips code to create a final tibble (br\_bls) with a
+summary of the bridges and unemployment data for each fips code. </br>
+</br> Then, I created two models using the bridges data to predict the
+unemployment count and the unemployment rate. </br> </br> For the third
+model where we needed to predict the unemployment rate using the
+previous month’s rate as a predictor, I ran into the same problem I had
+earlier (the bridges data changes by year, but the BLS data changes by
+month). It doesn’t make sense to use the bridges data from 2012-2012 and
+the unemployment rate from December 2018 to predict the unemployment
+rate for December 2019. </br> To make address this problem, I made a
+model that took the bridges data from 2018 and unemployment number/rate
+from December 2018 as features in a model to predict the unemployment
+rate of December 2019.
